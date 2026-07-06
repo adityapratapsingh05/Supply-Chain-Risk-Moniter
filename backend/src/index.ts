@@ -34,9 +34,21 @@ async function runMigrations() {
 app.set('trust proxy', 1);
 app.use(helmet());
 
+// Dynamic CORS for all Vercel preview URLs
+const allowedOrigins = [
+  /^https:\/\/supply-chain-risk-moniter.*\.vercel\.app$/, // All Vercel preview/prod URLs
+  'http://localhost:3000', // Local development
+];
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || '*',
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const isAllowed = allowedOrigins.some(o =>
+        typeof o === 'string' ? o === origin : o.test(origin)
+      );
+      callback(isAllowed ? null : new Error('Not allowed by CORS'), isAllowed);
+    },
     credentials: true,
   })
 );
