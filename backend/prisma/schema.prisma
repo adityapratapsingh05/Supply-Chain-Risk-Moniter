@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  VIEWER
+}
+
+enum RiskTier {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NotificationChannel {
+  EMAIL
+  BROWSER
+  DASHBOARD
+}
+
+model User {
+  id                  String    @id @default(uuid())
+  name                String
+  email               String    @unique
+  passwordHash        String?
+  role                Role      @default(VIEWER)
+  avatarUrl           String?
+  googleId            String?   @unique
+  isEmailVerified     Boolean   @default(false)
+  emailVerifyToken    String?
+  emailVerifyExpires  DateTime?
+  resetPasswordToken  String?
+  resetPasswordExpires DateTime?
+  rememberMeToken     String?
+  isActive            Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  recommendations     Recommendation[]
+
+  @@index([email])
+}
+
+model Country {
+  id        String  @id @default(uuid())
+  name      String  @unique
+  isoCode   String  @unique
+  latitude  Float
+  longitude Float
+  riskScore Float   @default(0)
+  riskTier  RiskTier @default(LOW)
+
+  suppliers Supplier[]
+  ports     Port[]
+  riskEvents RiskEvent[]
+}
+
+model Port {
+  id         String  @id @default(uuid())
+  name       String
+  countryId  String
+  latitude   Float
+  longitude  Float
+  throughput Int     @default(0)
+  riskScore  Float   @default(0)
+  riskTier   RiskTier @default(LOW)
+
+  country    Country @relation(fields: [countryId], references: [id])
+  shipments  Shipment[]
+
+  @@index([countryId])
+}
+
+model Supplier {
+  id             String   @id @default(uuid())
+  name           String
+  code           String   @unique
+  countryId      String
+  tier           Int      @default(1)
+  category       String?
+  latitude       Float?
+  longitude      Float?
+  dependencyScore Float   @default(0)
+  criticalityScore Float  @default(0)
+  leadTimeDays   Int      @default(0)
+  riskScore      Float    @default(0)
+  riskTier       RiskTier @default(LOW)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  country        Country  @relation(fields: [countryId], references: [id])
+  shipments      Shipment[]
+  riskEvents     RiskEvent[]
+  recommendations Recommendation[]
+
+  @@index([countryId])
+  @@index([riskTier])
+}
+
+model Shipment {
+  id           String   @id @default(uuid())
+  reference    String   @unique
+  supplierId   String
+  portId       String?
+  status       String   @default("IN_TRANSIT")
+  originCountry String?
+  destination  String?
+  quantity     Int      @default(0)
+  etaDate      DateTime?
+  departedAt   DateTime?
+  arrivedAt    DateTime?
+  riskScore    Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  supplier     Supplier @relation(fields: [supplierId], references: [id])
+  port         Port?    @relation(fields: [portId], references: [id])
+
+  @@index([supplierId])
+}
+
+model RiskEvent {
+  id               String   @id @default(uuid())
+  title            String
+  description      String
+  category         String
+  severity         String
+  probability      Float    @default(0.5)
+  businessImpact   Float    @default(0)
+  affectedIndustry String?
+  countryId        String?
+  supplierId       String?
+  source           String   @default("MANUAL")
+  sourceUrl        String?
+  detectedAt       DateTime @default(now())
+  recoveryTimeDays Int?
+  confidenceScore  Float?
+  createdAt        DateTime @default(now())
+
+  country          Country?  @relation(fields: [countryId], references: [id])
+  supplier         Supplier? @relation(fields: [supplierId], references: [id])
+  recommendations  Recommendation[]
+
+  @@index([countryId])
+  @@index([supplierId])
+}
+
+model Recommendation {
+  id                  String   @id @default(uuid())
+  riskEventId         String?
+  supplierId          String?
+  createdById         String?
+  rootCause           String?
+  businessImpact      String?
+  alternativeSuppliers Json?
+  mitigationPlan      String?
+  inventoryStrategy   String?
+  shippingRoute       String?
+  costEstimateUsd     Float?
+  recoveryTimeDays    Int?
+  confidenceScore     Float?
+  riskScore           Float?
+  rawAiResponse       Json?
+  status              String   @default("PENDING")
+  createdAt           DateTime @default(now())
+
+  riskEvent           RiskEvent? @relation(fields: [riskEventId], references: [id])
+  supplier            Supplier?  @relation(fields: [supplierId], references: [id])
+  createdBy           User?      @relation(fields: [createdById], references: [id])
+
+  @@index([supplierId])
+}
+
+model Notification {
+  id        String              @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  channel   NotificationChannel @default(DASHBOARD)
+  isRead    Boolean             @default(false)
+  link      String?
+  createdAt DateTime            @default(now())
+
+  user      User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String?
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user      User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
