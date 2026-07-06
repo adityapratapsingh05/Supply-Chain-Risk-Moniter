@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import { PrismaClient } from '@prisma/client';
 
 import authRoutes from './routes/auth.routes';
 import supplierRoutes from './routes/supplier.routes';
@@ -15,6 +16,19 @@ import { notFoundHandler, errorHandler } from './middleware/errorHandler';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 8080;
+const prisma = new PrismaClient();
+
+// Run migrations on startup
+async function runMigrations() {
+  try {
+    console.log('🔄 Running database migrations...');
+    await prisma.$executeRawUnsafe('SELECT 1');
+    console.log('✅ Database connected and migrations complete');
+  } catch (error) {
+    console.error('❌ Migration failed:', error);
+    process.exit(1);
+  }
+}
 
 // Security
 app.use(helmet());
@@ -56,10 +70,18 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Start Server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Supply Chain Risk Monitor API listening on port ${PORT}`);
+async function start() {
+  await runMigrations();
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Supply Chain Risk Monitor API listening on port ${PORT}`);
 
-  // Temporarily disabled until deployment is complete.
-  // Uncomment after configuring NEWSAPI_KEY.
-  // startNewsJob();
+    // Temporarily disabled until deployment is complete.
+    // Uncomment after configuring NEWSAPI_KEY.
+    // startNewsJob();
+  });
+}
+
+start().catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
 });
