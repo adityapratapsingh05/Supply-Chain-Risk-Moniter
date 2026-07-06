@@ -56,7 +56,7 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Start Server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Supply Chain Risk Monitor API listening on port ${PORT}`);
 
   // Temporarily disabled until deployment is complete.
