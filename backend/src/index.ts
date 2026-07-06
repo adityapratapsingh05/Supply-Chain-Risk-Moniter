@@ -21,15 +21,11 @@ const prisma = new PrismaClient();
 // Run migrations on startup
 async function runMigrations() {
   try {
-    console.log('🔄 Running database migrations...');
-    const { execSync } = require('child_process');
-    execSync('npx prisma migrate deploy', { 
-      stdio: 'inherit',
-      env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL, DIRECT_URL: process.env.DIRECT_URL }
-    });
-    console.log('✅ Database migrations complete');
+    console.log('🔄 Checking database connection...');
+    await prisma.$executeRawUnsafe('SELECT 1');
+    console.log('✅ Database connected');
   } catch (error) {
-    console.error('❌ Migration failed:', error);
+    console.error('❌ Database connection failed:', error);
     process.exit(1);
   }
 }
