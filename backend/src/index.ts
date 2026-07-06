@@ -22,8 +22,12 @@ const prisma = new PrismaClient();
 async function runMigrations() {
   try {
     console.log('🔄 Running database migrations...');
-    await prisma.$executeRawUnsafe('SELECT 1');
-    console.log('✅ Database connected and migrations complete');
+    const { execSync } = require('child_process');
+    execSync('npx prisma migrate deploy', { 
+      stdio: 'inherit',
+      env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL, DIRECT_URL: process.env.DIRECT_URL }
+    });
+    console.log('✅ Database migrations complete');
   } catch (error) {
     console.error('❌ Migration failed:', error);
     process.exit(1);
@@ -31,6 +35,7 @@ async function runMigrations() {
 }
 
 // Security
+app.set('trust proxy', 1);
 app.use(helmet());
 
 app.use(
@@ -45,6 +50,7 @@ app.use(express.json({ limit: '2mb' }));
 const globalLimiter = rateLimit({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   max: Number(process.env.RATE_LIMIT_MAX) || 300,
+  skip: (req) => process.env.NODE_ENV !== 'production',
 });
 
 app.use(globalLimiter);
