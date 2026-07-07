@@ -5,8 +5,8 @@ services:
     plan: starter
     region: oregon
     root: backend
-    buildCommand: cd backend && npm install && npx prisma generate && npx prisma db push --skip-generate && npm run build
-    startCommand: cd backend && npm start
+    buildCommand: npm install && npx prisma generate && npx prisma db push --skip-generate && npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
